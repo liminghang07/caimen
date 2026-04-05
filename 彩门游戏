@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>炸金花 · 简单对战</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Roboto', system-ui, -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 主游戏面板 */
+        .game-container {
+            background: rgba(0, 20, 5, 0.55);
+            backdrop-filter: blur(4px);
+            border-radius: 64px 64px 48px 48px;
+            padding: 20px 20px 30px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 150, 0.3);
+        }
+
+        .game-panel {
+            background: #fef5e0;
+            background-image: radial-gradient(circle at 25% 40%, rgba(255,245,210,0.8) 2%, transparent 2.5%);
+            background-size: 28px 28px;
+            border-radius: 48px;
+            padding: 20px 25px 30px;
+            box-shadow: inset 0 0 0 2px #fff8e7, 0 15px 20px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+
+        /* 玩家区域 */
+        .player-area {
+            background: #2c1a12c9;
+            border-radius: 48px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 0 #1f0f08;
+            backdrop-filter: blur(2px);
+        }
+
+        .badge {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: #ffd966;
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #3b2a1f;
+            letter-spacing: 1px;
+            box-shadow: inset 0 1px 2px #fff3bf, 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .cards-area {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 18px 0 12px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 95px;
+            height: 130px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: -3px 3px 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #faf7f0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            position: relative;
+            transition: transform 0.2s ease;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+        }
+
+        .card.face-down {
+            background: repeating-linear-gradient(45deg, #2c5a2a, #2c5a2a 12px, #1f421e 12px, #1f421e 24px);
+            box-shadow: inset 0 0 0 2px #9b7b4b, 0 2px 6px black;
+        }
+
+        .card.face-down::after {
+            content: "?";
+            font-size: 42px;
+            color: #ecd672;
+            text-shadow: 2px 2px 0 #5a3e1a;
+            font-weight: bold;
+        }
+
+        .card.face-down .card-rank, 
+        .card.face-down .card-suit {
+            display: none;
+        }
+
+        .card-rank {
+            font-size: 44px;
+            line-height: 1;
+            margin-top: 12px;
+        }
+
+        .card-suit {
+            font-size: 52px;
+            margin-top: -8px;
+        }
+
+        /* 花色颜色 */
+        .suit-heart, .suit-diamond { color: #c33; text-shadow: 0 1px 1px white; }
+        .suit-spade, .suit-club { color: #2c3e2f; text-shadow: none; }
+
+        /* 手牌信息 */
+        .hand-rank-info {
+            background: #e9dbc0;
+            border-radius: 60px;
+            padding: 8px 15px;
+            display: inline-block;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #3e2a1c;
+            margin-top: 5px;
+            box-shadow: inset 0 1px 2px #fff0cf, 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* 筹码/操作区 */
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0 5px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #f5c542;
+            border: none;
+            font-weight: bold;
+            font-size: 1.3rem;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.07s linear;
+            box-shadow: 0 5px 0 #b47c2e;
+            color: #2d2418;
+            letter-spacing: 1px;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #b47c2e;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            transform: none;
+            cursor: not-allowed;
+            filter: grayscale(0.1);
+        }
+
+        .reset-btn {
+            background: #577a3e;
+            box-shadow: 0 5px 0 #2c4a1e;
+            color: #fef1cf;
+        }
+
+        .result-area {
+            background: #1f2f1a;
+            border-radius: 60px;
+            padding: 12px 20px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: #ffefb9;
+            letter-spacing: 2px;
+            box-shadow: inset 0 1px 3px #4f6b3e, 0 4px 6px black;
+        }
+
+        .chip {
+            background: #2f2216;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            color: #ffdd99;
+        }
+
+        @media (max-width: 550px) {
+            .card { width: 70px; height: 98px; }
+            .card-rank { font-size: 32px; }
+            .card-suit { font-size: 38px; }
+            button { padding: 8px 18px; font-size: 1rem; }
+            .badge { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-panel">
+        <!-- 电脑区域 -->
+        <div class="player-area" style="background: #2a3b24c9;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <span class="badge">🤖 电脑 · 庄家</span>
+                <span class="chip">🎴 牌型: <span id="aiHandType">??</span></span>
+            </div>
+            <div class="cards-area" id="aiCardsArea">
+                <!-- 动态渲染电脑牌 -->
+            </div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-area">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <span class="badge">👤 玩家 · 你</span>
+                <span class="chip">🃟 牌型: <span id="playerHandType">等待发牌</span></span>
+            </div>
+            <div class="cards-area" id="playerCardsArea">
+                <!-- 动态渲染玩家牌 -->
+            </div>
+        </div>
+
+        <!-- 操作栏 -->
+        <div class="action-bar">
+            <button id="dealBtn">🃟 发牌</button>
+            <button id="compareBtn" disabled>⚡ 比牌</button>
+            <button id="resetBtn" class="reset-btn">🔄 重置</button>
+        </div>
+
+        <!-- 结果 / 提示 -->
+        <div class="result-area" id="resultMsg">
+            🎲 点击【发牌】开始炸金花对局
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 炸金花核心逻辑 ----------
+    // 花色映射: ♠ ♥ ♣ ♦
+    const SUITS = ['♠', '♥', '♣', '♦'];
+    const SUIT_NAMES = ['spade', 'heart', 'club', 'diamond'];
+    // 点数映射 2-14 (J=11, Q=12, K=13, A=14)
+    const RANK_MAP = {
+        2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',
+        11:'J',12:'Q',13:'K',14:'A'
+    };
+    
+    // 一副牌 (52张 无大小王)
+    function createDeck() {
+        let deck = [];
+        for (let suit of SUITS) {
+            for (let rank = 2; rank <= 14; rank++) {
+                deck.push({ suit, rank, rankChar: RANK_MAP[rank] });
+            }
+        }
+        return deck;
+    }
+
+    // 洗牌 Fisher-Yates
+    function shuffle(deck) {
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        return deck;
+    }
+
+    // 发牌: 从洗好的牌堆中取6张, 每人三张
+    function dealHands(deck) {
+        const playerHand = deck.slice(0, 3);
+        const aiHand = deck.slice(3, 6);
+        return { playerHand, aiHand, remaining: deck.slice(6) };
+    }
+
+    // 判断手牌牌型以及排序辅助 (返回牌型等级 + 比较权重值)
+    // 炸金花规则: 豹子 > 同花顺 > 金花 > 顺子 > 对子 > 散牌
+    // 返回 { typeRank, compareValue, typeName, sortedRanks }
+    function evaluateHand(cards) {
+        // 提取花色和点数数组
+        const suits = cards.map(c => c.suit);
+        const ranks = cards.map(c => c.rank);
+        const isSameSuit = suits.every(s => s === suits[0]);
+        
+        // 排序点数(降序)
+        let sortedRanks = [...ranks].sort((a,b)=>b-a);
+        let isStraight = false;
+        // 顺子特判: A32 特殊情况  (A=14,3,2)
+        const uniqueSorted = [...new Set(sortedRanks)].sort((a,b)=>b-a);
+        if (uniqueSorted.length === 3) {
+            if (uniqueSorted[0] - uniqueSorted[1] === 1 && uniqueSorted[1] - uniqueSorted[2] === 1) {
+                isStraight = true;
+            }
+            // 特殊 A32
+            if (uniqueSorted[0] === 14 && uniqueSorted[1] === 3 && uniqueSorted[2] === 2) {
+                isStraight = true;
+                // 为了比较方便，将A32视作最小顺子，排序变为3,2,14 -> 比较时按降序 但实际顺子比较用最大牌，但A32最大为3
+                // 调整排序权重：让比较时变成 [3,2,14] 但最大牌为3; 为方便我们单独处理权重值
+                sortedRanks = [3,2,14]; // 用于比较顺子时, 最大牌是3
+            }
+        }
+        
+        // 判断豹子 (三同)
+        const isTrips = sortedRanks[0] === sortedRanks[2];
+        
+        // 同花顺
+        const isStraightFlush = isSameSuit && isStraight;
+        
+        // 牌型等级: 豹子6, 同花顺5, 金花4, 顺子3, 对子2, 散牌1
+        let typeRank = 0;
+        let typeName = "";
+        let compareValue = []; // 用于比较的权重数组 (降序)
+        
+        if (isTrips) {
+            typeRank = 6;
+            typeName = "🔥 豹子";
+            compareValue = [sortedRanks[0], 0, 0];
+        } 
+        else if (isStraightFlush) {
+            typeRank = 5;
+            typeName = "🌈 同花顺";
+            // 对于顺子，取最大牌比较，特殊处理A32最大牌是3
+            let high = (sortedRanks[0] === 14 && sortedRanks[1] === 3) ? 3 : sortedRanks[0];
+            compareValue = [high, 0, 0];
+        }
+        else if (isSameSuit) {
+            typeRank = 4;
+            typeName = "🌸 金花";
+            compareValue = [...sortedRanks];
+        }
+        else if (isStraight) {
+            typeRank = 3;
+            typeName = "📏 顺子";
+            let high = (sortedRanks[0] === 14 && sortedRanks[1] === 3) ? 3 : sortedRanks[0];
+            compareValue = [high, 0, 0];
+        }
+        else {
+            // 对子或者散牌，需找出对子
+            const rankCount = new Map();
+            ranks.forEach(r => rankCount.set(r, (rankCount.get(r)||0)+1));
+            let hasPair = false;
+            let pairRank = 0;
+            let kickers = [];
+            for (let [r, cnt] of rankCount.entries()) {
+                if (cnt === 2) hasPair = true;
+            }
+            if (hasPair) {
+                typeRank = 2;
+                typeName = "🪙 对子";
+                // 获取对子等级和单张
+                let pairVal = 0, single = 0;
+                for (let [r, cnt] of rankCount.entries()) {
+                    if (cnt === 2) pairVal = r;
+                    else single = r;
+                }
+                // 比较规则：先比对子大小，再比单张
+                compareValue = [pairVal, single, 0];
+                // 为了让排序稳定，把对子rank放前面
+            } else {
+                typeRank = 1;
+                typeName = "🃟 散牌";
+                compareValue = [...sortedRanks];
+            }
+        }
+        
+        // 确保compareValue长度3，用于字典序比较
+        while(compareValue.length < 3) compareValue.push(0);
+        
+        return { typeRank, compareValue, typeName, sortedRanksRaw: sortedRanks };
+    }
+    
+    // 比较两手牌: 返回值 1: player赢, -1: ai赢, 0:平局
+    function compareHands(playerCards, aiCards) {
+        const playerEval = evaluateHand(playerCards);
+        const aiEval = evaluateHand(aiCards);
+        if (playerEval.typeRank !== aiEval.typeRank) {
+            return playerEval.typeRank > aiEval.typeRank ? 1 : -1;
+        }
+        // 同类型比较compareValue
+        for (let i = 0; i < 3; i++) {
+            if (playerEval.compareValue[i] !== aiEval.compareValue[i]) {
+                return playerEval.compareValue[i] > aiEval.compareValue[i] ? 1 : -1;
+            }
+        }
+        return 0; // 完全平局
+    }
+    
+    // ---------- 界面渲染 ----------
+    let currentDeck = [];
+    let playerHand = [];
+    let aiHand = [];
+    let gameActive = false;      // 已经发牌且未比牌/未重置时可用比牌
+    let comparedResult = false;   // 是否已经比过牌 (防止重复比牌)
+    
+    // DOM 元素
+    const playerCardsDiv = document.getElementById('playerCardsArea');
+    const aiCardsDiv = document.getElementById('aiCardsArea');
+    const playerHandTypeSpan = document.getElementById('playerHandType');
+    const aiHandTypeSpan = document.getElementById('aiHandType');
+    const resultMsgDiv = document.getElementById('resultMsg');
+    const dealBtn = document.getElementById('dealBtn');
+    const compareBtn = document.getElementById('compareBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    
+    // 辅助：根据card获取花色css类及符号
+    function getSuitClass(suit) {
+        if (suit === '♥' || suit === '♦') return 'suit-heart';
+        return 'suit-spade';
+    }
+    
+    // 渲染玩家手牌(明牌)
+    function renderPlayerCards(hand, isRevealed = true) {
+        playerCardsDiv.innerHTML = '';
+        if (!hand || hand.length === 0) {
+            // 展示占位背面
+            for(let i=0;i<3;i++) {
+                const backCard = document.createElement('div');
+                backCard.className = 'card face-down';
+                playerCardsDiv.appendChild(backCard);
+            }
+            return;
+        }
+        hand.forEach(card => {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+            const rankSpan = document.createElement('div');
+            rankSpan.className = 'card-rank ' + getSuitClass(card.suit);
+            rankSpan.innerText = card.rankChar;
+            const suitSpan = document.createElement('div');
+            suitSpan.className = 'card-suit ' + getSuitClass(card.suit);
+            suitSpan.innerText = card.suit;
+            cardDiv.appendChild(rankSpan);
+            cardDiv.appendChild(suitSpan);
+            playerCardsDiv.appendChild(cardDiv);
+        });
+    }
+    
+    // 渲染电脑手牌: 根据是否已经比牌结束决定正面/背面
+    let isRevealedAI = false;  // 控制是否亮牌 (比牌后或者重置后发牌默认不亮，比完亮)
+    function renderAICards(hand, forceReveal = false) {
+        aiCardsDiv.innerHTML = '';
+        if (!hand || hand.length === 0) {
+            for(let i=0;i<3;i++) {
+                const backCard = document.createElement('div');
+                backCard.className = 'card face-down';
+                aiCardsDiv.appendChild(backCard);
+            }
+            return;
+        }
+        const reveal = forceReveal || isRevealedAI;
+        hand.forEach(card => {
+            const cardDiv = document.createElement('div');
+            if (!reveal) {
+                cardDiv.className = 'card face-down';
+            } else {
+                cardDiv.className = 'card';
+                const rankSpan = document.createElement('div');
+                rankSpan.className = 'card-rank ' + getSuitClass(card.suit);
+                rankSpan.innerText = card.rankChar;
+                const suitSpan = document.createElement('div');
+                suitSpan.className = 'card-suit ' + getSuitClass(card.suit);
+                suitSpan.innerText = card.suit;
+                cardDiv.appendChild(rankSpan);
+                cardDiv.appendChild(suitSpan);
+            }
+            aiCardsDiv.appendChild(cardDiv);
+        });
+    }
+    
+    // 更新UI中的牌型文字 (根据是否揭示)
+    function updateHandTypeTexts() {
+        if (playerHand.length === 3) {
+            const evalP = evaluateHand(playerHand);
+            playerHandTypeSpan.innerText = evalP.typeName;
+        } else {
+            playerHandTypeSpan.innerText = '无手牌';
+        }
+        if (aiHand.length === 3 && isRevealedAI) {
+            const evalA = evaluateHand(aiHand);
+            aiHandTypeSpan.innerText = evalA.typeName;
+        } else if (aiHand.length === 3 && !isRevealedAI) {
+            aiHandTypeSpan.innerText = '???';
+        } else {
+            aiHandTypeSpan.innerText = '无手牌';
+        }
+    }
+    
+    // 重置游戏状态 (清空牌，重置按钮)
+    function resetGame(keepMsg = false) {
+        gameActive = false;
+        comparedResult = false;
+        isRevealedAI = false;
+        playerHand = [];
+        aiHand = [];
+        // 重置牌堆但暂时不用
+        currentDeck = shuffle(createDeck());
+        renderPlayerCards([]);
+        renderAICards([], false);
+        playerHandTypeSpan.innerText = '等待发牌';
+        aiHandTypeSpan.innerText = '??';
+        if (!keepMsg) resultMsgDiv.innerHTML = '🃟 已重置，点击【发牌】开始新对局';
+        else resultMsgDiv.innerHTML = '🃟 点击【发牌】开始新对局';
+        compareBtn.disabled = true;
+    }
+    
+    // 发牌逻辑
+    function deal() {
+        // 重置所有状态，全新牌局
+        resetGame(true);
+        // 全新洗牌
+        let freshDeck = shuffle(createDeck());
+        currentDeck = [...freshDeck];
+        const { playerHand: newPlayer, aiHand: newAI } = dealHands(currentDeck);
+        playerHand = newPlayer;
+        aiHand = newAI;
+        gameActive = true;
+        comparedResult = false;
+        isRevealedAI = false;    // 电脑牌未翻开
+        // 渲染
+        renderPlayerCards(playerHand, true);
+        renderAICards(aiHand, false);
+        updateHandTypeTexts();
+        compareBtn.disabled = false;
+        resultMsgDiv.innerHTML = '✅ 发牌完成！点击【比牌】一决胜负';
+    }
+    
+    // 比牌核心
+    function compare() {
+        if (!gameActive || comparedResult) {
+            if(comparedResult) resultMsgDiv.innerHTML = '⚠️ 本局已经比过了，请按【发牌】开始新对局';
+            else resultMsgDiv.innerHTML = '⚠️ 请先发牌！';
+            return;
+        }
+        if (playerHand.length !== 3 || aiHand.length !== 3) {
+            resultMsgDiv.innerHTML = '❓ 牌局异常，请重新发牌';
+            return;
+        }
+        // 亮牌！
+        isRevealedAI = true;
+        renderAICards(aiHand, true);
+        // 更新电脑牌型显示
+        updateHandTypeTexts();
+        // 判定胜负
+        const winner = compareHands(playerHand, aiHand);
+        let resultText = '';
+        if (winner === 1) {
+            resultText = '🎉 恭喜玩家获胜！ 🎉';
+        } else if (winner === -1) {
+            resultText = '💀 电脑获胜，再接再厉 💀';
+        } else {
+            resultText = '🤝 平局！棋逢对手 🤝';
+        }
+        // 额外显示双方牌型对比
+        const playerType = evaluateHand(playerHand).typeName;
+        const aiType = evaluateHand(aiHand).typeName;
+        resultMsgDiv.innerHTML = `${resultText}<br>📊 你的牌型: ${playerType}  |  🤖 电脑牌型: ${aiType}`;
+        comparedResult = true;
+        gameActive = false;  // 比完后无法再次比牌，需重新发牌
+        compareBtn.disabled = true;
+    }
+    
+    // 事件绑定
+    dealBtn.addEventListener('click', () => {
+        deal();
+    });
+    
+    compareBtn.addEventListener('click', () => {
+        compare();
+    });
+    
+    resetBtn.addEventListener('click', () => {
+        resetGame(false);
+        // 额外清除隐藏标记
+        isRevealedAI = false;
+        comparedResult = false;
+        gameActive = false;
+        compareBtn.disabled = true;
+        // 显示重置提示
+        resultMsgDiv.innerHTML = '♻️ 游戏已重置，点击发牌开始新对局';
+        playerHandTypeSpan.innerText = '等待发牌';
+        aiHandTypeSpan.innerText = '??';
+    });
+    
+    // 初始化: 重置一次展示空牌桌
+    resetGame(false);
+    // 额外微调显示
+    renderPlayerCards([], false);
+    renderAICards([], false);
+</script>
+</body>
+</html>
